@@ -1,0 +1,44 @@
+import numpy as np
+from scipy.spatial import ConvexHull
+import geojson
+import matplotlib.pyplot as plt
+from datetime import datetime
+
+# Вставьте свои координаты сюда
+points = np.array([
+    [0.1, 0.2],
+    [0.3, 0.4],
+    [0.5, 0.2],
+    [0.7, 0.8],
+    [0.9, 0.5]
+])
+
+# Нахождение выпуклой оболочки
+hull = ConvexHull(points)
+hull_points = points[hull.vertices]
+
+# Получение текущего времени в формате "ГГГГ-ММ-ДД_ЧЧ-ММ-СС"
+current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+# Указываем путь для сохранения файла с добавлением текущего времени
+output_path = rf'C:\Users\Андрей\OneDrive - ФГОБУ ВО Финансовый университет при Правительстве РФ\Рабочий стол\! Project - Contagion\convex_hull_{current_time}.geojson'
+
+# Создание полигона GeoJSON
+polygon = geojson.Polygon([hull_points.tolist()])
+
+# Сохранение результата в файл GeoJSON
+with open(output_path, 'w') as f:
+    geojson.dump(polygon, f)
+
+print(f"Выпуклая оболочка сохранена в файл '{output_path}'.")
+
+# Визуализация результата
+plt.figure(figsize=(8, 8))
+plt.plot(points[:, 0], points[:, 1], 'o', label='Original points')
+plt.plot(hull_points[:, 0], hull_points[:, 1], 'r--', lw=2, label='Convex Hull')
+plt.fill(hull_points[:, 0], hull_points[:, 1], 'r', alpha=0.3)
+plt.legend()
+plt.xlabel('X')
+plt.ylabel('Y')
+plt.title('Convex Hull')
+plt.show()
