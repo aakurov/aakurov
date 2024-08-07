@@ -1,0 +1,75 @@
+import numpy as np
+from scipy.spatial import ConvexHull
+import pandas as pd
+from ast import literal_eval
+from datetime import datetime
+import matplotlib.pyplot as plt
+
+# Чтение данных из Excel-файла
+input_path = r'C:\Users\Андрей\OneDrive - ФГОБУ ВО Финансовый университет при Правительстве РФ\Рабочий стол\! Project - Contagion\coor.xlsx'
+df = pd.read_excel(input_path)
+
+# Вывод списка столбцов для отладки
+print("Список столбцов в DataFrame:")
+print(df.columns)
+
+# Проверка структуры данных
+print("\nСтруктура данных:")
+print(df.head())
+
+# Функция для построения выпуклой оболочки
+def compute_convex_hull(coordinates):
+    try:
+        points = np.array(literal_eval(coordinates))
+        if points.ndim != 2 or points.shape[1] != 2:
+            raise ValueError("Координаты должны быть двумерным массивом с двумя столбцами")
+        hull = ConvexHull(points)
+        hull_points = points[hull.vertices].tolist()
+        return hull_points
+    except Exception as e:
+        print(f"Ошибка при обработке координат: {coordinates} - {e}")
+        return []
+
+# Применение функции ко всем кластерам и добавление результатов в новый столбец
+df['convex_hull'] = df['coordinates'].apply(compute_convex_hull)
+
+# Проверка наличия столбца 'convex_hull'
+print("\nПроверка наличия столбца 'convex_hull':")
+print(df.head())
+
+# Получение текущего времени в формате "ГГГГ-ММ-ДД_ЧЧ-ММ-СС"
+current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+# Указываем путь для сохранения файла с добавлением текущего времени
+output_path = rf'C:\Users\Андрей\OneDrive - ФГОБУ ВО Финансовый университет при Правительстве РФ\Рабочий стол\! Project - Contagion\output_{current_time}.xlsx'
+
+# Сохранение обновленного Excel-файла
+df.to_excel(output_path, index=False)
+
+print(f"Обновленный Excel-файл сохранен в '{output_path}'.")
+
+
+
+# Визуализация результата для каждого кластера (опционально)
+if 'cluster' in df.columns:
+    for cluster in df['cluster'].unique():
+        cluster_data = df[df['cluster'] == cluster]
+        plt.figure(figsize=(8, 8))
+        for index, row in cluster_data.iterrows():
+            try:
+                coordinates = np.array(literal_eval(row['coordinates']))
+                hull_points = np.array(row['convex_hull'])
+                if coordinates.ndim != 2 or hull_points.ndim != 2:
+                    raise ValueError("Координаты или выпуклая оболочка имеют неверный формат")
+                plt.plot(coordinates[:, 0], coordinates[:, 1], 'o', label=f'Original points ({row["cluster"]})')
+                plt.plot(hull_points[:, 0], hull_points[:, 1], 'r--', lw=2, label=f'Convex Hull ({row["cluster"]})')
+                plt.fill(hull_points[:, 0], hull_points[:, 1], 'r', alpha=0.3)
+            except Exception as e:
+                print(f"Ошибка при визуализации для кластера {row['cluster']}: {e}")
+        plt.legend()
+        plt.xlabel('X')
+        plt.ylabel('Y')
+        plt.title(f'Convex Hull for Cluster {cluster}')
+        plt.show()
+else:
+    print("Столбец 'cluster' не найден в DataFrame.")
