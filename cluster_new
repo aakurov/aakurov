@@ -1,0 +1,60 @@
+import pandas as pd
+import numpy as np
+from sklearn.cluster import DBSCAN
+from datetime import datetime
+
+# Чтение данных из Excel-файла
+file_path = r'C:\coordinates.xlsx'  # Используйте сырые строки для пути к файлу
+df = pd.read_excel(file_path)
+
+# Проверка названий столбцов
+print("Columns in the Excel file:", df.columns)
+
+# Убедитесь, что столбцы называются 'longitude' и 'latitude'
+longitude_col = 'longitude'
+latitude_col = 'latitude'
+
+if longitude_col not in df.columns or latitude_col not in df.columns:
+    print(f"Error: The columns '{longitude_col}' and '{latitude_col}' were not found in the Excel file.")
+    exit()
+
+# Извлечение координат из DataFrame
+coordinates = df[[longitude_col, latitude_col]].to_numpy()
+
+# Начальные значения параметров
+eps_degrees = 0.003  # Примерно 330 метров
+min_samples = 10
+
+# Кластеризация с использованием DBSCAN
+clustering = DBSCAN(eps=eps_degrees, min_samples=min_samples).fit(coordinates)
+labels = clustering.labels_
+
+# Подготовка к записи в Excel
+data = []
+unique_labels = set(labels)
+for k in unique_labels:
+    if k == -1:
+        # Шум (outliers)
+        continue
+    
+    class_member_mask = (labels == k)
+    xy = coordinates[class_member_mask]
+    
+    # Преобразование координат в строковый формат
+    coordinates_str = str(xy.tolist())
+    data.append([k, coordinates_str])
+
+# Создание DataFrame для сохранения
+clusters_df = pd.DataFrame(data, columns=['Cluster', 'Coordinates'])
+
+# Получение текущей даты
+current_date = datetime.now().strftime('%Y-%m-%d')
+
+# Указание пути для сохранения файла
+output_file = rf'C:\Users\Андрей\OneDrive - ФГОБУ ВО Финансовый университет при Правительстве РФ\Рабочий стол\! Project - Contagion\clusters_{current_date}.xlsx'
+
+# Сохранение DataFrame в Excel
+clusters_df.to_excel(output_file, index=False)
+
+# Оповещение о завершении записи
+print(f"Координаты кластеров записаны в файл '{output_file}'")
