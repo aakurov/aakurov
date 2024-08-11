@@ -1,0 +1,69 @@
+import pandas as pd
+import numpy as np
+from sklearn.cluster import DBSCAN
+from scipy.spatial import ConvexHull, QhullError
+import shapely.geometry as geom
+import shapely.ops as ops
+from datetime import datetime
+
+# Загрузка данных
+file_path = r"C:\Users\Андрей\OneDrive - ФГОБУ ВО Финансовый университет при Правительстве РФ\Рабочий стол\! Project - Contagion\coordinates.xlsx"
+df = pd.read_excel(file_path)
+
+# Извлечение координат
+coords = df[['latitude', 'longitude']].values
+
+# Кластеризация DBSCAN с новыми параметрами
+eps = 0.003  # Радиус для объединения точек в кластер
+min_samples = 10  # Минимальное количество точек для образования кластера
+db = DBSCAN(eps=eps, min_samples=min_samples).fit(coords)
+labels = db.labels_
+
+# Получение уникальных кластеров
+unique_labels = set(labels)
+clusters = [coords[labels == label] for label in unique_labels if label != -1]
+
+# Построение выпуклых оболочек
+def create_convex_hull(cluster):
+    if len(cluster) > 2:  # Выпуклую оболочку можно построить только для 3 и более точек
+        try:
+            hull = ConvexHull(cluster)
+            return cluster[hull.vertices]
+        except QhullError:  # Обработка ошибки, если точки коллинеарны
+            return cluster
+    else:
+        return cluster
+
+# Создание списка выпуклых оболочек
+hulls = [create_convex_hull(cluster) for cluster in clusters]
+
+# Функция для объединения пересекающихся или вложенных оболочек
+def merge_overlapping_hulls(hulls):
+    merged_hulls = []
+    for hull in hulls:
+        hull_poly = geom.Polygon(hull)
+        merged = False
+        for i, existing_hull in enumerate(merged_hulls):
+            existing_poly = geom.Polygon(existing_hull)
+            if hull_poly.intersects(existing_poly) or hull_poly.within(existing_poly) or existing_poly.within(hull_poly):
+                merged_poly = ops.unary_union([hull_poly, existing_poly])
+                merged_hulls[i] = np.array(merged_poly.exterior.coords)
+                merged = True
+                break
+        if not merged:
+            merged_hulls.append(hull)
+    return merged_hulls
+
+# Итеративное объединение оболочек
+while True:
+    new_hulls = merge_overlapping_hulls(hulls)
+    if len(new_hulls) == len(hulls):
+        break
+    hulls = new_hulls
+
+# Сохранение результата в новый Excel-файл с широтой перед долготой
+result_file_path = r"C:\Users\Андрей\OneDrive - ФГОБУ ВО Финансовый университет при Правительстве РФ\Рабочий стол\! Project - Contagion\output_{}.xlsx".format(datetime.now().strftime("%Y%m%d_%H%M%S"))
+output_df = pd.DataFrame({'polygon': [str([[lat, lon] for lon, lat in hull.tolist()]) for hull in hulls]})
+output_df.to_excel(result_file_path, index=False)
+
+print(f"Результат сохранен в файл: {result_file_path}")
