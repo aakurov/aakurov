@@ -14,8 +14,8 @@ df = pd.read_excel(file_path)
 coords = df[['latitude', 'longitude']].values
 
 # Кластеризация DBSCAN с новыми параметрами
-eps = 0.001  # Радиус для объединения точек в кластер
-min_samples = 30  # Минимальное количество точек для образования кластера
+eps = 0.003  # Радиус для объединения точек в кластер
+min_samples = 10  # Минимальное количество точек для образования кластера
 db = DBSCAN(eps=eps, min_samples=min_samples).fit(coords)
 labels = db.labels_
 
