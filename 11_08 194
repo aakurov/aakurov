@@ -7,21 +7,21 @@ import shapely.ops as ops
 from datetime import datetime
 
 # Загрузка данных
-file_path = r"C:\Users\Андрей\OneDrive - ФГОБУ ВО Финансовый университет при Правительстве РФ\Рабочий стол\! Project - Contagion\coordinates.xlsx"
+file_path = r"C:\Users\Андрей\OneDrive - ФГОБУ ВО Финансовый университет при Правительстве РФ\Рабочий стол\! Project - Contagion\coordinates_2.xlsx"
 df = pd.read_excel(file_path)
 
 # Извлечение координат
 coords = df[['latitude', 'longitude']].values
 
 # Кластеризация DBSCAN с новыми параметрами
-eps = 0.003  # Радиус для объединения точек в кластер
-min_samples = 10  # Минимальное количество точек для образования кластера
+eps = 0.0025  # Радиус для объединения точек в кластер
+min_samples = 4  # Минимальное количество точек для образования кластера
 db = DBSCAN(eps=eps, min_samples=min_samples).fit(coords)
 labels = db.labels_
 
 # Получение уникальных кластеров
 unique_labels = set(labels)
-clusters = [coords[labels == label] for label in unique_labels если label != -1]
+clusters = [coords[labels == label] for label in unique_labels if label != -1]
 
 # Построение выпуклых оболочек
 def create_convex_hull(cluster):
@@ -63,7 +63,7 @@ while True:
 
 # Сохранение результата в новый Excel-файл с тройной квадратной скобкой
 result_file_path = r"C:\Users\Андрей\OneDrive - ФГОБУ ВО Финансовый университет при Правительстве РФ\Рабочий стол\! Project - Contagion\output_{}.xlsx".format(datetime.now().strftime("%Y%m%d_%H%M%S"))
-output_df = pd.DataFrame({'polygon': [str([[[lat, lon] for lon, lat in hull.tolist()]]) for hull in hulls]})
+output_df = pd.DataFrame({'polygon': [str([[[lat, lon] for lat, lon in hull.tolist()]]) for hull in hulls]})
 output_df.to_excel(result_file_path, index=False)
 
 print(f"Результат сохранен в файл: {result_file_path}")
